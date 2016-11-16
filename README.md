@@ -1,6 +1,6 @@
 # pyargfeeder
 
-Systematic Trading in python
+Easy command line access to python functions without maintaining scripts
 
 Rob Carver
 
@@ -77,14 +77,14 @@ This is all pretty fiddly, and with dozens of these scripts lying around they ar
 
 To replicate this kind of setup with `pyargfeeder` all you need to do is the following:
 
-1- Copy the script file  [p](p.html) to a script directory
-2a- Change the run.py reference to point to the 'p' script file in the pyargfeeder module directory
+1- Copy the script file  [p](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/p) to a script directory
+2a- Change the run.py reference in the 'p' script file to point to the pyargfeeder module directory
 
 OR
-2b- Copy run.py to a script directory (if you aren't worried about maintaining possible multiple copies of run.py)
+2b- Copy [run.py](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/run.py) to a script directory (if you aren't worried about maintaining possible multiple copies of run.py)
 
 
-3- Edit the commandlist.yaml file to include a list of all the functions you want to be able to call with scripts. Type casting is optional and can be applied to none, some, or all arguments:
+3- Edit the [commandlist.yaml](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/commandlist.yaml) file to include a list of all the functions you want to be able to call with scripts. Type casting is optional and can be applied to none, some, or all arguments:
 
 ```
 manualfill:
@@ -101,9 +101,11 @@ manualfill:
 $ . p manualfill
 ```
 
-Produces (user typing in *bold*):
+Produces (with user typing shown inside asterix ):
 
 
+
+```
 Do a manual fill in the trading system
 
 Manually apply a fill to an order; mark an order as completed; unlock the positions table.
@@ -131,6 +133,7 @@ Argument IBtype  (default: 'LIVE') ?*TEST*
 Done a fill of -4 for order 45 at price 45.600000 (LIVE, TEST)
 
 Finished
+```
 
 
 
@@ -171,13 +174,13 @@ def wibble(arg1, arg2, arg3="test", arg4=16.9):
 
 Create a script directory.
 
-1- Copy the script file  [p](p.html) to a script directory. This needs to be executable (in linux `chmod +x p`)
-2a- Change the run.py reference to point to the 'p' script file in the pyargfeeder module directory
+1- Copy the script file  `p` to a script directory. This needs to be executable (in linux `chmod +x p`)
+2a- Change the run.py reference in the 'p' script file to point to the pyargfeeder module directory
 
 OR
-2b- Copy run.py to a script directory (if you aren't worried about maintaining possible multiple copies of run.py)
+2b- Copy [run.py](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/run.py) to a script directory (if you aren't worried about maintaining possible multiple copies of run.py)
 
-3- Edit the commandlist.yaml file to include a list of all the functions you want to be able to call with scripts. 
+3- Edit the [commandlist.yaml](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/commandlist.yaml) file to include a list of all the functions you want to be able to call from this script directory. 
 
 
 ```
@@ -203,7 +206,7 @@ Type casting is optional and can be applied to none, some, or all arguments. Onl
 To get a list of functions you can run just call the script with no arguments:
 
 ```
-. p 
+$. p 
 
 Enter the name of a function located in commandlist.yaml
 
@@ -214,10 +217,10 @@ Example . p manualfill
 ```
 
 
-To call the script just type `. p thingy`. The doc string for the function will be printed. You will then be prompted for each of the arguments of the underlying wibble() function. Example:
+To call the script just type `$. p thingy`. The doc string for the function will be printed. You will then be prompted for each of the arguments of the underlying wibble() function. Example:
 
 ```
-. p thingy
+$. p thingy
 
 
 This is a docstring  ## prints the docstring from wibble() function
@@ -245,7 +248,7 @@ There are three key files
 
 This does the setup of any dependencies and launches python on run.py with a single argument - the function reference (eg 'wibble'). It must be able to find run.py and be executable.
 
-### The run.py file
+#### The run.py file
 
 This looksup the function reference in the configuration file, imports the function, gets the arguments doing any type conversion.
 
