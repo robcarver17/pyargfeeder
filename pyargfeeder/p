@@ -1,0 +1,3 @@
+#!/bin/bash
+. ~/.profile
+python3 run.py $1

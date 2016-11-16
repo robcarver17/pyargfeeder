@@ -1,0 +1,29 @@
+demo1:
+   pointer: demofunc.demofunc
+   typecast:
+      arg1: float
+      arg2: int
+demo2:
+   pointer: demofunc.demofuncA
+demo3:
+   pointer: demofunc2.demofunc3
+   typecast:
+      arg1: float
+      arg2: int
+demo4:
+   pointer: demofunc2.demofunc4
+   typecast:
+      arg1: float
+      arg2: int
+thingy:
+   pointer: demofunc2.wibble
+   typecast:
+      arg2: int
+      arg4: float
+manualfill:
+   pointer: manualfill.manualfill
+   typecast:
+      fill_price: float
+      orderid: int
+      fill: int
+
