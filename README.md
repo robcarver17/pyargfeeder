@@ -4,10 +4,11 @@ Easy command line access to python functions without maintaining scripts
 
 Rob Carver
 
-Version 0.0.1
+Version 0.0.2
 
 
-20161116
+20190212
+
 
 
 ## Description
@@ -78,24 +79,16 @@ This is all pretty fiddly, and with dozens of these scripts lying around they ar
 To replicate this kind of setup with `pyargfeeder` all you need to do is the following:
 
 1- Copy the script file  [p](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/p) to a script directory
+
 2a- Change the run.py reference in the 'p' script file to point to the pyargfeeder module directory
 
 OR
+
 2b- Copy [run.py](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/run.py) to a script directory (if you aren't worried about maintaining possible multiple copies of run.py)
 
 
-3- Edit the [commandlist.yaml](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/commandlist.yaml) file to include a list of all the functions you want to be able to call with scripts. Type casting is optional and can be applied to none, some, or all arguments:
 
-```
-manualfill:
-   pointer: manualfill.manualfill   # the location of the underlying function
-   typecast:  # optional information for type casting
-      fill_price: float
-      orderid: int
-      fill: int
-```
-
-4- At the command line type 
+3- At the command line type 
 
 ```
 $ . p manualfill
@@ -136,12 +129,11 @@ Finished
 ```
 
 
-
 Notice how:
 
 - no command line arguments need to be given - everything has been done interactively
 - some arguments have a default, entering an empty string by pressing return defaults to them
-- some arguments have type casting. If something can't be cast, then you have to re-enter the value
+- some arguments have type casting (if annotations have been used in the argument signature). If something can't be cast, then you have to re-enter the value
 - compulsory arguments (without defaults) have to have a value, you can't just press return
 
 This is better, because:
@@ -158,10 +150,10 @@ This is better, because:
 
 ### Adding functions
 
-Let's say you want to call a python function 'wibble' which is in the current module (can be anywhere that python can import from succesfully) and file 'demofunc2.py'. There are no restrictions on wibble, but it should have a doc string (ideally). It can have no arguments, or any number of named arguments with defaults, and positional arguments without defaults.
+Let's say you want to call a python function 'wibble' which is in the module fubar.thingy (can be anywhere that python can import from succesfully).  There are no restrictions on wibble, but it should have a doc string (ideally). It can have no arguments, or any number of named arguments with defaults, and positional arguments without defaults. Arguments can also have annotated types, or not.
 
 ```
-def wibble(arg1, arg2, arg3="test", arg4=16.9):
+def wibble(arg1, arg2: int, arg3="test", arg4=16.9):
     """
     This is a docstring
     """
@@ -180,55 +172,23 @@ Create a script directory.
 OR
 2b- Copy [run.py](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/run.py) to a script directory (if you aren't worried about maintaining possible multiple copies of run.py)
 
-3- Edit the [commandlist.yaml](https://github.com/robcarver17/pyargfeeder/blob/master/pyargfeeder/commandlist.yaml) file to include a list of all the functions you want to be able to call from this script directory. 
-
-
-```
-thingy: # doesn't have to be the name of the function. This is the identifying name you call with the p script
-   pointer: demofunc2.wibble ## if this was in another module you'd use module.pythonfile.function format; make sure the module is in the search path
-```
-
-4 (optionally) - if you want to convert the type of any argument before passing to 'wibble' then you can add them as follows:
-
-```
-thingy: 
-   pointer: demofunc2.wibble
-   typecast:
-      arg2: int
-      arg4: float
-```
-
-Type casting is optional and can be applied to none, some, or all arguments. Only python native types can be used. 
 
 
 ### Using the script
 
-To get a list of functions you can run just call the script with no arguments:
+
+To call the script just type `$. p fubar.thingy.wibble`. The doc string for the function will be printed. You will then be prompted for each of the arguments of the underlying wibble() function. Example:
 
 ```
-$. p 
-
-Enter the name of a function located in commandlist.yaml
-
-Any one from:
-['manualfill', 'demo1', 'demo2', 'demo4', 'demo3']
-
-Example . p manualfill
-```
-
-
-To call the script just type `$. p thingy`. The doc string for the function will be printed. You will then be prompted for each of the arguments of the underlying wibble() function. Example:
-
-```
-$. p thingy
+$. p fubar.thingy.wibble
 
 
 This is a docstring  ## prints the docstring from wibble() function
 
 Argument arg1  ? ## no default or type checking. You must type something, otherwise it will prompt again
-Argument arg2  (default: 'default3') ?   ## argument with a default. If you press return the default will be passed in
-Argument arg3    (type: int)? ## argument with type conversion. Any value you enter will be converted into the type shown. If this isn't possible it will prompt for the argument again
-Argument arg4  (default: '5.6')  (type: float)?   ## both defaults and type casting. Return will give you the default value. Otherwise value will be type converted.
+Argument arg2    (type: int)? ## argument with type conversion. Any value you enter will be converted into the type shown. If this isn't possible it will prompt for the argument again
+Argument arg3  (default: 'test') (type: str) ?   ## both defaults and type casting. Return will give you the default value. Otherwise value will be type converted.
+Argument arg4  (default: '16.9')  (type: float)?   ## both defaults and type casting. Return will give you the default value. Otherwise value will be type converted.
 
 ```
 
@@ -237,11 +197,10 @@ Argument arg4  (default: '5.6')  (type: float)?   ## both defaults and type cast
 
 ### Documentation
 
-There are three key files
+There are two key files
 
 - The 'p' script file
 - The run.py
-- The 'commandlist.yaml' configuration file
 
 
 #### The 'p' script file
@@ -250,37 +209,14 @@ This does the setup of any dependencies and launches python on run.py with a sin
 
 #### The run.py file
 
-This looksup the function reference in the configuration file, imports the function, gets the arguments doing any type conversion.
+This imports the function, gets the arguments doing any type conversion.
 
-
-#### commandlist.yaml configuration file
-
-This file must resolve to a python dict of dicts. The top level keywords are the function references. The compulsory next level key is 'pointer'. An optional key is 'typecast' which should be another dict, keywords arguments and values typecasting functions. Any arguments omitted from the typecast dict will not be type converted, which means they will be passed as strings. This also means that the underlying function should be able to deal with converting or be okay with strings.
-
-For example:
-
-```
-demo1:
-   pointer: demofunc.demofunc
-   typecast:
-      arg1: float
-      arg2: int
-demo2:
-   pointer: demofunc.demofuncA
-```
-
-(strictly speaking the contents of the typecast dictionary can be any function which will then be called with the raw input as the argument).
 
 
 ## Dependencies
 
-Python 3.x, pyyaml
+Python 3.3+
 
-Make sure you get the python3 versions of the relevant packages, i.e. use:
-
-```
-sudo pip3 install ....
-```
 
 ## Installation
 
@@ -298,3 +234,7 @@ GNU v3
 
 Absolutely no warranty is implied with this product. Use at your own risk. 
 
+## Version history
+
+v0.0.1 first release
+v0.0.2 config file no longer required, uses type annotations
