@@ -4,7 +4,7 @@ Created on 16 Nov 2016
 @author: rob
 '''
 
-def manualfill(orderid, fill, fill_price, dbtype="LIVE", IBtype="LIVE"):
+def manualfill(orderid: int, fill: int, fill_price: float, dbtype="LIVE", IBtype="LIVE"):
     """
     Do a manual fill in the trading system
 

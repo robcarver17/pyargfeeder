@@ -2,184 +2,175 @@
 Created on 16 Nov 2016
 
 @author: rob
+
+v2.0 12th Feb 2019, fills types from annotations
 '''
 
 import inspect
-from yaml import load as yload
 import importlib
 import sys
     
-config_file="commandlist.yaml"    
 
-TRACE=False
+def resolve_func(func_reference_name):
+    split_func = func_reference_name.rsplit('.', 1)
+    if len(split_func)==1:
+        raise Exception("%s should include filename as well as function e.g. filename.funcname or module.filename.funcname" % func_reference_name)
+    funcname = split_func.pop()
+    funcsource = split_func.pop()
 
-    
-def get_all_config():
+    ## stop overzealous interpreter tripping up
+    func = None
+
+    ## imports have to be done in main
     try:
-        with open(config_file,'r') as f:
-            all_config_info=yload(f)
-    except FileNotFoundError:
-        raise Exception("Need a valid yaml file as the configuration, %s didn't work" % config_file)
-    return all_config_info
-    
-def get_config(funcname):
-    """
-    Return config information for a particular function
-    """
-    all_config_info=get_all_config()
-    try:
-        config_info=all_config_info[funcname]
-    except KeyError:
-        raise Exception("Function %s not found in config file %s" % (funcname, config_file))
+        mod = importlib.import_module(funcsource)
+    except ImportError:
+        raise Exception("NOT FOUND: Module %s specified for function reference %s\n" % (funcsource, func_reference_name))
 
-    ## Full pointer to where a module is with "." seperation eg demofunc.demofunc
-    full_funcname=config_info['pointer']
-    
-    ## Optional type casting
-    type_casting=config_info.get("typecast", dict())
-        
-    return full_funcname, type_casting
-    
-def fill_args_and_run_func(func, full_funcname, type_casting=dict()):
+    func = getattr(mod, funcname, None)
+
+    if func is None:
+        raise Exception("NOT FOUND: function %s in module %s  specified for function reference %s" % (
+        funcname, mod, func_reference_name))
+
+    return func
+
+NO_DEFAULT = object()
+NO_TYPE_PROVIDED = object()
+NO_VALID_ARGUMENT_PASSED = object()
+
+def parameter_default(parameter_signature):
+    default = parameter_signature.default
+    if default is inspect._empty:
+        default = NO_DEFAULT
+    return default
+
+def has_default(parameter_signature):
+    return parameter_default(parameter_signature) is not NO_DEFAULT
+
+def parameter_type(parameter_signature):
+    ptype = parameter_signature.annotation
+    if ptype is inspect._empty:
+        # get from default
+        if has_default(parameter_signature):
+            default_value = parameter_default(parameter_signature)
+            ptype = type(default_value)
+        else:
+            # give up
+            return NO_TYPE_PROVIDED
+
+    return ptype.__name__
+
+def has_type(parameter_signature):
+    return parameter_type(parameter_signature) is not NO_TYPE_PROVIDED
+
+def input_and_type_cast_argument(argname, parameter_signature):
+    """
+    Interactively get a value for a parameter, considering any type casting required or defaults
+
+    :param argname: str
+    :param parameter_signature: results of doing inspect.signature(func)['parameter name']
+    :return: argument value
+    """
+
+    default_provided = has_default(parameter_signature)
+    needs_casting = has_type(parameter_signature)
+
+    if default_provided:
+        argdefault = parameter_default(parameter_signature)
+
+    if needs_casting:
+        type_to_cast_to = parameter_type(parameter_signature)
+
+    # Should never return this unless something gone horribly wrong
+    arg_value = NO_VALID_ARGUMENT_PASSED
+
+    while arg_value is NO_VALID_ARGUMENT_PASSED:
+        if default_provided:
+            default_string = " (default: '%s')" % str(argdefault)
+        else:
+            default_string = ""
+
+        if needs_casting:
+            type_string = " (type: %s)" % str(type_to_cast_to)
+        else:
+            type_string = ""
+
+        arg_value = input("Argument %s %s %s?" % (argname, default_string, type_string))
+
+        if arg_value == "": # just pressed carriage return...
+            if default_provided:
+                arg_value = argdefault
+                break
+            else:
+                print("No default provided for %s - need a value. Please type something!" % argname)
+                arg_value = NO_VALID_ARGUMENT_PASSED
+        else:
+            ## A value has been typed - check if needs type casting
+
+            if needs_casting:
+                try:
+                    ## Cast the type
+                    ## this might not work
+                    type_func = eval("%s" % type_to_cast_to)
+                    arg_value = type_func(arg_value)
+                    break
+                except:
+                    print("\nCouldn't cast value %s to type %s\n" %
+                          (arg_value, type_to_cast_to))
+                    arg_value = NO_VALID_ARGUMENT_PASSED
+            else:
+                ## no type casting required
+                pass
+
+    return arg_value
+
+def fill_args_and_run_func(func, full_funcname):
     """
     Prints the docstring of func, then asks for all of its arguments with defaults
     
     Optionally casts to type, if any argument name is an entry in the dict type_casting
     """
     ##print doc string
-    if TRACE:
-        print(func)
-        print("Doc string for %s" % full_funcname)
 
     print("\n")
+    print(full_funcname+":")
     print(inspect.getdoc(func))
     print("\n")
-    func_arguments=inspect.getargspec(func).args
-    func_defaults=inspect.getargspec(func).defaults
-    
-    
-    func_arguments=list(func_arguments)
-    
-    if func_defaults is None:
-        func_defaults=list()
-    else:
-        func_defaults=list(func_defaults)
-    
-    count_star_args=len(func_arguments) - len(func_defaults)
-    
-    func_defaults= [None]*count_star_args + func_defaults   
-    
-    def _fshow(argname, argdefault):
-        if argdefault is None:
-            return argname
-        else:
-            return argname+"="+str(argdefault)
-        
+    func_arguments=inspect.signature(func).parameters
+
     print("\nArguments:")
-    print([_fshow(argname, argdefault) for (argname, argdefault) in zip(func_arguments, func_defaults)])
+    print(list(func_arguments.keys()))
     print("\n")
     
     args=[]
     kwargs=dict()
-    for (argname, argdefault) in zip(func_arguments,func_defaults):
-        
-        is_kwarg=argdefault is not None
-        type_to_cast_to=type_casting.get(argname,None)
-        needs_casting=type_to_cast_to is not None
-        
-        acceptable=False
-        while not acceptable:
-            if is_kwarg:
-                default_string=" (default: '%s')" % str(argdefault)
-            else:
-                default_string=""
-                
-            if needs_casting:
-                type_string=" (type: %s)" % str(type_to_cast_to)
-            else:
-                type_string=""
-                 
-            arg_value = input("Argument %s %s %s?" % (argname, default_string, type_string))
+    for (argname, parameter_signature) in func_arguments.items():
+        arg_value = input_and_type_cast_argument(argname, parameter_signature)
+        if arg_value is NO_VALID_ARGUMENT_PASSED:
+            raise Exception("Invalid argument passed - should not happen - check function 'input_and_type_cast_argument' logic")
 
-            if arg_value=="":
-                if is_kwarg:
-                    arg_value=argdefault
-                    acceptable=True
-                else:
-                    print("No default - need a value. Please type something!")
-                    acceptable=False
-            else:
-                ## A value has been typed - check if needs type casting
-                
-                if needs_casting:
-                    try:
-                        ## Cast the type
-                        type_func=eval("%s" % type_to_cast_to)
-                        arg_value=type_func(arg_value)
-                        acceptable=True
-                    except:
-                        print("\nCouldn't cast value %s to type %s: retype or check %s\n" %
-                               (arg_value, type_to_cast_to, config_file))
-                        acceptable=False
-                else:
-                    ## no type casting required
-                    acceptable=True
-
+        is_kwarg = has_default(parameter_signature)
         if is_kwarg:
             kwargs[argname]=arg_value
         else:
             args.append(arg_value)
 
-    if TRACE:
-        print("\nRunning %s() with args %s, kwargs %s\n" % (full_funcname, args, kwargs))
-
-    print("\n")    
-    func(*args, **kwargs)
-
-    print("\nFinished\n\n")
+    return args, kwargs
 
 if __name__ == '__main__':
-    """
-    Load the function and config information
-    
-    Requires a single argument, name of function reference in file 
-    """
-    
+
     if len(sys.argv)==1:
-        print("Enter the name of a function located in %s" % config_file)
-        all_config_data=list(get_all_config().keys())
-        print("\nAny one from:")
-        print(all_config_data)
-        print("\nExample . p %s" % all_config_data[0])
-        
+        print("Enter the name of a function with full pathname eg systems.basesystem.System")
         exit()
 
-    ## From the config file get the full pointer and    
     func_reference_name=sys.argv[1]
-    full_funcname, type_casting=get_config(func_reference_name)
-    
-    ## full_funcname is something like demofunc.demofunc2
-    ## type_castig is an optional dict, keys are argument names, entries are types eg dict(arg1="int")
-    
-    funcsource, funcname = full_funcname.rsplit('.', 1)
 
-    ## stop overzealous interpreter tripping up
-    func=None
+    # find the function
+    func = resolve_func(func_reference_name)
 
-    if TRACE:
-        print("Running %s imported from %s" % (funcname, funcsource))
-    
-    ## imports have to be done in main
-    try:
-        mod = importlib.import_module(funcsource)
-    except ImportError:
-        raise Exception("NOT FOUND: Module %s specified for function reference %s\n Check file %s" % (funcsource, func_reference_name, config_file))
-    
-    func = getattr(mod, funcname, None)
-    
-    if func is None:
-        raise Exception("NOT FOUND: function %s in module %s  specified for function reference %s \n Check file %s" % (funcname, mod, func_reference_name, config_file))
-        
-    fill_args_and_run_func(func, full_funcname, type_casting)
-    
-    
+    # get arguments
+    args, kwargs = fill_args_and_run_func(func, func_reference_name)
+
+    # call the function
+    func(*args, **kwargs)

@@ -20,7 +20,7 @@ def demofunc4():
     
 
 
-def wibble(arg1, arg2, arg3="test", arg4=16.9):
+def wibble(arg1, arg2: int, arg3="test", arg4=16.9):
     """
     This is a docstring
     """
